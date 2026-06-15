@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import api from '../utils/api';
 
 const AuthContext = createContext(null);
@@ -8,10 +8,10 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const logoutTimerRef = useRef(null);
 
   // Validate session on mount
   useEffect(() => {
-    let timer;
     const checkAuth = () => {
       const storedToken = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
@@ -30,7 +30,8 @@ export const AuthProvider = ({ children }) => {
           
           // Setup a timer to auto-logout when the remainder of the 24 hours is up
           const timeLeft = parseInt(expiry, 10) - now;
-          timer = setTimeout(() => {
+          if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+          logoutTimerRef.current = setTimeout(() => {
             console.warn('Session expired. Auto-logging out.');
             logout();
           }, timeLeft);
@@ -41,9 +42,9 @@ export const AuthProvider = ({ children }) => {
 
     checkAuth();
     return () => {
-      if (timer) clearTimeout(timer);
+      if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
     };
-  }, [token]);
+  }, []);
 
   const login = async (email, password) => {
     try {
@@ -60,6 +61,14 @@ export const AuthProvider = ({ children }) => {
       setToken(apiToken);
       setUser(apiUser);
       setIsAuthenticated(true);
+
+      // Setup a timer to auto-logout when the 24 hours is up
+      if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+      logoutTimerRef.current = setTimeout(() => {
+        console.warn('Session expired. Auto-logging out.');
+        logout();
+      }, 24 * 60 * 60 * 1000);
+
       return { success: true };
     } catch (err) {
       const errMsg = err.response?.data?.error || 'Authentication failed';
@@ -71,6 +80,12 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('token_expiry');
+    
+    if (logoutTimerRef.current) {
+      clearTimeout(logoutTimerRef.current);
+      logoutTimerRef.current = null;
+    }
+
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);

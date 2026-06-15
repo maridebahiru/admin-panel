@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, RefreshCw, KeyRound, AlertCircle, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Login = () => {
-  const { login, forgotPassword } = useAuth();
+  const navigate = useNavigate();
+  const { login, forgotPassword, isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
+
+  // If already authenticated, redirect to dashboard automatically
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -23,7 +32,7 @@ const Login = () => {
       const res = await login(email, password);
       if (res.success) {
         toast.success('Login successful! Welcome back.');
-        // Redirect will happen automatically due to AuthContext checking localStorage on mount
+        window.location.replace('/');
       } else {
         toast.error(res.error || 'Invalid credentials. Please try again.');
       }
