@@ -89,7 +89,7 @@ const AppContent = () => {
         toastOptions={{
           duration: 3500,
           style: {
-            background: '#1B2A4A',
+            background: '#292858',
             color: '#fff',
             borderRadius: '12px',
             fontSize: '14px',
@@ -97,8 +97,8 @@ const AppContent = () => {
           },
           success: {
             iconTheme: {
-              primary: '#C9A84C',
-              secondary: '#1B2A4A'
+              primary: '#ffffff',
+              secondary: '#292858'
             }
           }
         }}

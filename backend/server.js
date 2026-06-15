@@ -221,7 +221,7 @@ app.get('/settings', async (req, res) => {
       if (error.code === 'PGRST116') {
         const { data: newRow, error: seedError } = await supabase
           .from('settings')
-          .insert({ id: 1, welcome_text: 'Welcome to Zion Choir', choir_name: 'Zion Choir' })
+          .insert({ id: 1, welcome_text: 'Welcome to Hyme Managmenr', choir_name: 'Hyme Managmenr' })
           .select()
           .single();
         
@@ -774,9 +774,46 @@ app.delete('/mezmurs/:id', requireAuth, async (req, res) => {
   }
 });
 
+// Helper: Ensure default settings row exists and update if old branding
+const ensureDefaultSettings = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('*')
+      .eq('id', 1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log('Seeding default settings in Supabase...');
+        await supabase
+          .from('settings')
+          .insert({ id: 1, welcome_text: 'Welcome to Hyme Managmenr', choir_name: 'Hyme Managmenr' });
+      } else {
+        console.warn('Error fetching settings on startup:', error.message);
+      }
+    } else if (data) {
+      if (data.choir_name === 'Zion Choir' || data.welcome_text === 'Welcome to Zion Choir') {
+        console.log('Updating legacy branding settings to "Hyme Managmenr"...');
+        await supabase
+          .from('settings')
+          .update({
+            choir_name: 'Hyme Managmenr',
+            welcome_text: 'Welcome to Hyme Managmenr'
+          })
+          .eq('id', 1);
+      }
+    }
+  } catch (err) {
+    console.error('Exception verifying default settings on startup:', err);
+  }
+};
+
 // Start server
 app.listen(PORT, async () => {
   console.log(`Backend server running on port ${PORT}`);
   // Ensure the supabase storage bucket is created
   await ensureBucketExists();
+  // Ensure default settings are active
+  await ensureDefaultSettings();
 });

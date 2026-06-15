@@ -180,7 +180,7 @@ const Settings = ({ settings, refreshSettings }) => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Zion Choir"
+                  placeholder="e.g. Hyme Managmenr"
                   value={choirName}
                   onChange={(e) => setChoirName(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 font-ethiopic"
@@ -193,7 +193,7 @@ const Settings = ({ settings, refreshSettings }) => {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Welcome to Zion Choir"
+                  placeholder="e.g. Welcome to Hyme Managmenr"
                   value={welcomeText}
                   onChange={(e) => setWelcomeText(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 font-ethiopic"
@@ -299,7 +299,7 @@ const Settings = ({ settings, refreshSettings }) => {
                 </label>
                 <input
                   type="url"
-                  placeholder="https://facebook.com/zionchoir"
+                  placeholder="https://facebook.com/hymemanagmenr"
                   value={facebookUrl}
                   onChange={(e) => setFacebookUrl(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium"
@@ -312,7 +312,7 @@ const Settings = ({ settings, refreshSettings }) => {
                 </label>
                 <input
                   type="text"
-                  placeholder="https://t.me/zionchoir"
+                  placeholder="https://t.me/hymemanagmenr"
                   value={telegramUrl}
                   onChange={(e) => setTelegramUrl(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium"
@@ -325,7 +325,7 @@ const Settings = ({ settings, refreshSettings }) => {
                 </label>
                 <input
                   type="url"
-                  placeholder="https://youtube.com/c/zionchoir"
+                  placeholder="https://youtube.com/c/hymemanagmenr"
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium"
@@ -338,7 +338,7 @@ const Settings = ({ settings, refreshSettings }) => {
                 </label>
                 <input
                   type="url"
-                  placeholder="https://instagram.com/zionchoir"
+                  placeholder="https://instagram.com/hymemanagmenr"
                   value={instagramUrl}
                   onChange={(e) => setInstagramUrl(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium"
@@ -351,7 +351,7 @@ const Settings = ({ settings, refreshSettings }) => {
                 </label>
                 <input
                   type="url"
-                  placeholder="https://tiktok.com/@zionchoir"
+                  placeholder="https://tiktok.com/@hymemanagmenr"
                   value={tiktokUrl}
                   onChange={(e) => setTiktokUrl(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium"

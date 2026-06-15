@@ -77,10 +77,10 @@ const Login = () => {
         {/* Logo and Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gold-500 text-navy-900 font-extrabold text-3xl shadow-xl shadow-gold-500/10 mb-4 font-ethiopic">
-            ጽ
+            መ
           </div>
           <h2 className="text-2xl font-bold text-white tracking-wide font-ethiopic">
-            Zion Choir Admin
+            Hyme Managmenr
           </h2>
           <p className="text-sm text-slate-400 mt-1">
             {forgotMode ? 'Recover your administrator session' : 'Sign in to access your dashboard'}
@@ -107,7 +107,7 @@ const Login = () => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@zionchoir.org"
+                    placeholder="admin@hymemanagmenr.org"
                     className="w-full bg-navy-950/60 text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl border border-navy-800 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none transition-all text-sm font-medium"
                   />
                 </div>
@@ -179,7 +179,7 @@ const Login = () => {
                     required
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
-                    placeholder="admin@zionchoir.org"
+                    placeholder="admin@hymemanagmenr.org"
                     className="w-full bg-navy-950/60 text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl border border-navy-800 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none transition-all text-sm font-medium"
                   />
                 </div>

@@ -41,10 +41,10 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         <div className="flex items-center justify-between h-16 px-6 border-b border-navy-900/50 bg-navy-900">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-lg bg-gold-500 flex items-center justify-center font-bold text-navy-800 text-lg shadow-md">
-              Z
+              H
             </div>
             <span className="text-lg font-bold tracking-wider text-slate-50 font-amharic">
-              Zion Admin
+              Hyme Managmenr
             </span>
           </div>
           

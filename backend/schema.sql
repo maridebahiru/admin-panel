@@ -47,8 +47,8 @@ CREATE TABLE announcements (
 CREATE TABLE settings (
     id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
     logo_url TEXT,
-    welcome_text TEXT DEFAULT 'Welcome to Zion Choir',
-    choir_name TEXT DEFAULT 'Zion Choir',
+    welcome_text TEXT DEFAULT 'Welcome to Hyme Managmenr',
+    choir_name TEXT DEFAULT 'Hyme Managmenr',
     youtube_channel_id TEXT,
     youtube_api_key TEXT,
     facebook_url TEXT,
@@ -61,5 +61,5 @@ CREATE TABLE settings (
 
 -- Seed Initial Default Settings Row
 INSERT INTO settings (id, welcome_text, choir_name)
-VALUES (1, 'Welcome to Zion Choir', 'Zion Choir')
+VALUES (1, 'Welcome to Hyme Managmenr', 'Hyme Managmenr')
 ON CONFLICT (id) DO NOTHING;

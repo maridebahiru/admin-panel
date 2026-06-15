@@ -48,7 +48,7 @@ const YoutubeHero = ({ welcomeText, logoUrl }) => {
             <span>✨ Welcome Administrator</span>
           </div>
           <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight font-ethiopic">
-            {welcomeText || 'Welcome to Zion Choir'}
+            {welcomeText || 'Welcome to Hyme Managmenr'}
           </h1>
           <p className="text-slate-300 max-w-xl text-sm lg:text-base">
             This dashboard grants full control over category arrangements, mezmurs, announcements, and mobile application properties.
@@ -65,7 +65,7 @@ const YoutubeHero = ({ welcomeText, logoUrl }) => {
             />
           ) : (
             <div className="w-28 h-28 lg:w-36 lg:h-36 rounded-full bg-navy-900 border-4 border-gold-500/20 flex items-center justify-center font-black text-gold-500 text-4xl shadow-2xl transition-transform duration-300 hover:scale-105 font-ethiopic">
-              ZC
+              HM
             </div>
           )}
         </div>

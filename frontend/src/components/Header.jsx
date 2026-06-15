@@ -29,11 +29,11 @@ const Header = ({ choirName, logoUrl, toggleSidebar }) => {
             />
           ) : (
             <div className="w-9 h-9 rounded-full bg-navy-800 flex items-center justify-center font-bold text-gold-500 text-sm">
-              ZC
+              HM
             </div>
           )}
-          <span className="text-xl font-bold tracking-tight text-navy-800 font-ethiopic">
-            {choirName || 'Zion Choir'}
+          <span className="text-sm font-bold text-navy-800 font-amharic hidden sm:inline-block">
+            {choirName || 'Hyme Managmenr'}
           </span>
         </div>
       </div>
@@ -47,9 +47,9 @@ const Header = ({ choirName, logoUrl, toggleSidebar }) => {
           </div>
           <div className="hidden md:block text-left">
             <p className="text-xs font-semibold text-slate-500">Administrator</p>
-            <p className="text-xs text-slate-400 font-medium truncate max-w-[150px]">
-              {user?.email || 'admin@zionchoir.org'}
-            </p>
+             <span className="text-[10px] text-slate-400 font-semibold block truncate max-w-[150px]">
+              {user?.email || 'admin@hymemanagmenr.org'}
+            </span>
           </div>
         </div>
       </div>
