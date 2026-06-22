@@ -6,12 +6,27 @@ import api from '../utils/api';
 const YoutubeHero = ({ welcomeText, logoUrl }) => {
   const [videoData, setVideoData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeVideo, setActiveVideo] = useState(null);
+  const [playlist, setPlaylist] = useState([]);
 
   const fetchVideo = async () => {
     try {
       setLoading(true);
       const res = await api.get('/youtube/latest');
       setVideoData(res.data);
+      if (res.data && res.data.videos && res.data.videos.length > 0) {
+        setPlaylist(res.data.videos);
+        setActiveVideo(res.data.videos[0]);
+      } else if (res.data && !res.data.fallback) {
+        const single = {
+          videoId: res.data.videoId,
+          title: res.data.title,
+          url: `https://www.youtube.com/watch?v=${res.data.videoId}`,
+          addedAt: res.data.publishedAt
+        };
+        setPlaylist([single]);
+        setActiveVideo(single);
+      }
     } catch (err) {
       console.warn('Silent failure on YouTube hero render:', err);
       setVideoData({ fallback: true });
@@ -36,7 +51,7 @@ const YoutubeHero = ({ welcomeText, logoUrl }) => {
   }
 
   // Fallback: If fallback is true, show the welcome text + logo banner
-  if (!videoData || videoData.fallback) {
+  if (!videoData || videoData.fallback || !activeVideo) {
     return (
       <div className="relative overflow-hidden w-full bg-gradient-to-r from-navy-800 to-navy-950 text-slate-100 rounded-2xl border border-navy-900 shadow-md p-8 lg:p-10 flex flex-col md:flex-row items-center justify-between space-y-6 md:space-y-0">
         <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/10 rounded-full blur-3xl transform translate-x-12 -translate-y-12"></div>
@@ -73,8 +88,8 @@ const YoutubeHero = ({ welcomeText, logoUrl }) => {
     );
   }
 
-  const { videoId, title, publishedAt, viewCount } = videoData;
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const { videoId, title } = activeVideo;
+  const videoUrl = activeVideo.url || `https://www.youtube.com/watch?v=${videoId}`;
 
   return (
     <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-0">
@@ -84,7 +99,7 @@ const YoutubeHero = ({ welcomeText, logoUrl }) => {
         <div className="w-full aspect-video">
           <iframe 
             src={`https://www.youtube.com/embed/${videoId}`}
-            title="Latest Choir Video"
+            title="Choir Featured Video"
             allowFullScreen
             className="w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -93,38 +108,67 @@ const YoutubeHero = ({ welcomeText, logoUrl }) => {
       </div>
 
       {/* Right Column: Video information */}
-      <div className="lg:col-span-5 p-6 lg:p-8 flex flex-col justify-between space-y-6 bg-gradient-to-b from-white to-slate-50">
-        <div className="space-y-4">
+      <div className="lg:col-span-5 p-6 lg:p-8 flex flex-col justify-between space-y-4 bg-gradient-to-b from-white to-slate-50">
+        <div className="space-y-3">
           <div className="inline-flex items-center space-x-2 bg-red-50 text-red-700 px-3 py-1 rounded-full text-xs font-semibold tracking-wider uppercase border border-red-100">
             <Youtube size={14} className="fill-red-700 text-red-700" />
-            <span>Latest Upload</span>
+            <span>{playlist.length > 1 ? 'Featured Playlist' : 'Featured Video'}</span>
           </div>
 
-          <h2 className="text-xl font-bold text-slate-800 leading-snug line-clamp-3 hover:text-navy-800 transition-colors">
+          <h2 className="text-xl font-bold text-slate-800 leading-snug line-clamp-2 hover:text-navy-800 transition-colors font-ethiopic" title={title}>
             {title}
           </h2>
 
-          <div className="flex flex-wrap gap-4 text-xs text-slate-500 font-medium pt-2">
-            <div className="flex items-center space-x-1">
-              <Calendar size={14} className="text-slate-400" />
-              <span>{new Date(publishedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
+          {/* Playlist Queue Section */}
+          {playlist.length > 1 && (
+            <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 border-t border-slate-100 pt-3 custom-scrollbar">
+              {playlist.map((video, idx) => {
+                const isActive = video.videoId === activeVideo.videoId;
+                return (
+                  <button
+                    key={video.videoId}
+                    type="button"
+                    onClick={() => setActiveVideo(video)}
+                    className={`w-full flex items-center space-x-3 p-2 rounded-xl text-left border transition-all ${
+                      isActive 
+                        ? 'bg-navy-50 border-navy-200 text-navy-800 shadow-sm' 
+                        : 'bg-white border-slate-100 hover:border-slate-200 text-slate-700 hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <div className="relative w-16 aspect-video rounded-lg overflow-hidden flex-shrink-0 bg-black">
+                      <img 
+                        src={`https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                      {isActive && (
+                        <div className="absolute inset-0 bg-navy-950/40 flex items-center justify-center">
+                          <span className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center text-white text-[10px] shadow">▶</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-xs font-bold font-ethiopic line-clamp-1 ${isActive ? 'text-navy-900' : 'text-slate-800'}`}>
+                        {video.title}
+                      </p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">Video {idx + 1}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            <div className="flex items-center space-x-1">
-              <Eye size={14} className="text-slate-400" />
-              <span>{viewCount.toLocaleString()} views</span>
-            </div>
-          </div>
+          )}
         </div>
 
-        <div>
+        <div className="pt-2">
           <a 
             href={videoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center w-full sm:w-auto px-5 py-3 bg-navy-800 text-white rounded-xl font-semibold text-sm hover:bg-navy-950 transition-colors shadow-md hover:shadow-lg hover:shadow-navy-900/10 focus:outline-none focus:ring-2 focus:ring-navy-800/40"
+            className="inline-flex items-center justify-center w-full sm:w-auto px-5 py-2.5 bg-navy-800 text-white rounded-xl font-semibold text-sm hover:bg-navy-950 transition-colors shadow-sm hover:shadow-md focus:outline-none"
           >
             <span>Watch on YouTube</span>
-            <ExternalLink size={16} className="ml-2" />
+            <ExternalLink size={14} className="ml-2" />
           </a>
         </div>
       </div>

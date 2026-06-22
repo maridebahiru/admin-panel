@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Music, 
@@ -14,7 +14,6 @@ import {
   Eye,
   ChevronLeft,
   ChevronRight,
-  BookOpen,
   Bookmark
 } from 'lucide-react';
 import api from '../utils/api';
@@ -70,19 +69,6 @@ const Mezmurs = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  // Watch for ?new=true query parameters
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get('new') === 'true' && categories.length > 0) {
-      openCreateView();
-      navigate('/mezmurs', { replace: true });
-    }
-  }, [location.search, categories]);
-
   const openCreateView = () => {
     setIsEditing(false);
     setCurrentId(null);
@@ -112,6 +98,19 @@ const Mezmurs = () => {
   const closeFormView = () => {
     setShowForm(false);
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Watch for ?new=true query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('new') === 'true' && categories.length > 0) {
+      openCreateView();
+      navigate('/mezmurs', { replace: true });
+    }
+  }, [location.search, categories, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

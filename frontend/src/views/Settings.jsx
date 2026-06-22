@@ -1,25 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Settings as SettingsIcon, 
   Upload, 
   Share2, 
   RefreshCw, 
   CheckCircle, 
-  XCircle, 
   Save, 
-  HelpCircle,
   Eye
 } from 'lucide-react';
 import { Youtube } from '../components/icons';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
+const extractVideoId = (url) => {
+  if (!url) return null;
+  const patterns = [
+    /youtube\.com\/watch\?v=([^&]+)/,
+    /youtu\.be\/([^?]+)/,
+    /youtube\.com\/live\/([^?]+)/,
+    /youtube\.com\/shorts\/([^?]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
+
 const Settings = ({ settings, refreshSettings }) => {
   // Local states for inputs
   const [welcomeText, setWelcomeText] = useState('');
   const [choirName, setChoirName] = useState('');
-  const [youtubeChannelId, setYoutubeChannelId] = useState('');
-  const [youtubeApiKey, setYoutubeApiKey] = useState('');
+  const [featuredVideoUrl, setFeaturedVideoUrl] = useState('');
+  const [featuredVideoTitle, setFeaturedVideoTitle] = useState('');
+  const [featuredVideos, setFeaturedVideos] = useState([]);
   const [facebookUrl, setFacebookUrl] = useState('');
   const [telegramUrl, setTelegramUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -33,22 +47,48 @@ const Settings = ({ settings, refreshSettings }) => {
 
   // States
   const [saving, setSaving] = useState(false);
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [testResult, setTestResult] = useState(null); // { success: boolean, title?: string, error?: string }
+  const [previewVideoId, setPreviewVideoId] = useState('');
 
   // Sync settings parameters when prop loads
   useEffect(() => {
     if (settings) {
       setWelcomeText(settings.welcome_text || '');
       setChoirName(settings.choir_name || '');
-      setYoutubeChannelId(settings.youtube_channel_id || '');
-      setYoutubeApiKey(settings.youtube_api_key || '');
+      setFeaturedVideoUrl('');
+      setFeaturedVideoTitle('');
       setFacebookUrl(settings.facebook_url || '');
       setTelegramUrl(settings.telegram_url || '');
       setYoutubeUrl(settings.youtube_url || '');
       setInstagramUrl(settings.instagram_url || '');
       setTiktokUrl(settings.tiktok_url || '');
       setLogoPreview(settings.logo_url || '');
+
+      // Parse featured videos
+      let list = [];
+      if (settings.featured_videos) {
+        try {
+          list = typeof settings.featured_videos === 'string' 
+            ? JSON.parse(settings.featured_videos) 
+            : settings.featured_videos;
+        } catch (e) {
+          console.warn('Error parsing settings.featured_videos:', e);
+        }
+      }
+
+      // Backward compatibility: if list is empty but single video exists
+      if ((!list || list.length === 0) && settings.featured_video_url) {
+        const id = extractVideoId(settings.featured_video_url);
+        if (id) {
+          list = [{
+            videoId: id,
+            url: settings.featured_video_url,
+            title: settings.featured_video_title || 'Featured Video',
+            addedAt: settings.updated_at || new Date().toISOString()
+          }];
+        }
+      }
+
+      setFeaturedVideos(list || []);
     }
   }, [settings]);
 
@@ -85,16 +125,37 @@ const Settings = ({ settings, refreshSettings }) => {
   };
 
   const handleSaveSettings = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!choirName.trim()) {
       return toast.error('Choir / Church Name is required.');
+    }
+
+    // Auto-add currently typed video if present but not added yet
+    let finalVideos = [...featuredVideos];
+    if (featuredVideoUrl.trim()) {
+      const id = extractVideoId(featuredVideoUrl);
+      if (id) {
+        const alreadyExists = finalVideos.some(v => v.videoId === id);
+        if (!alreadyExists) {
+          finalVideos.push({
+            videoId: id,
+            url: featuredVideoUrl.trim(),
+            title: featuredVideoTitle.trim() || 'Featured Video',
+            addedAt: new Date().toISOString()
+          });
+        }
+      }
     }
 
     const payload = {
       welcome_text: welcomeText,
       choir_name: choirName,
-      youtube_channel_id: youtubeChannelId,
-      youtube_api_key: youtubeApiKey,
+      // Preserve old settings if present
+      youtube_channel_id: settings?.youtube_channel_id || '',
+      youtube_api_key: settings?.youtube_api_key || '',
+      featured_video_url: finalVideos[0]?.url || '',
+      featured_video_title: finalVideos[0]?.title || '',
+      featured_videos: JSON.stringify(finalVideos),
       facebook_url: facebookUrl,
       telegram_url: telegramUrl,
       youtube_url: youtubeUrl,
@@ -115,35 +176,93 @@ const Settings = ({ settings, refreshSettings }) => {
     }
   };
 
-  const handleTestYoutube = async () => {
-    if (!youtubeChannelId || !youtubeApiKey) {
-      return toast.error('Please input Channel ID and API Key first to test.');
+  const handlePreviewVideo = () => {
+    if (!featuredVideoUrl.trim()) {
+      setPreviewVideoId('');
+      return toast.error('Please enter a YouTube video URL first.');
     }
+    const id = extractVideoId(featuredVideoUrl);
+    if (id) {
+      setPreviewVideoId(id);
+      toast.success('Preview loaded successfully!');
+    } else {
+      setPreviewVideoId('');
+      toast.error('Invalid YouTube URL format.');
+    }
+  };
+
+  const saveFeaturedVideosList = async (updatedList) => {
+    const payload = {
+      welcome_text: welcomeText,
+      choir_name: choirName,
+      youtube_channel_id: settings?.youtube_channel_id || '',
+      youtube_api_key: settings?.youtube_api_key || '',
+      featured_video_url: updatedList[0]?.url || '',
+      featured_video_title: updatedList[0]?.title || '',
+      featured_videos: JSON.stringify(updatedList),
+      facebook_url: facebookUrl,
+      telegram_url: telegramUrl,
+      youtube_url: youtubeUrl,
+      instagram_url: instagramUrl,
+      tiktok_url: tiktokUrl
+    };
 
     try {
-      setTestingConnection(true);
-      setTestResult(null);
-      const res = await api.get('/youtube/test', {
-        params: {
-          channelId: youtubeChannelId,
-          apiKey: youtubeApiKey
-        }
-      });
-      setTestResult({
-        success: true,
-        title: res.data.title
-      });
-      toast.success('YouTube Connection Test Succeeded!');
+      setSaving(true);
+      await api.put('/settings', payload);
+      refreshSettings();
     } catch (err) {
       console.error(err);
-      setTestResult({
-        success: false,
-        error: err.response?.data?.error || 'Failed to authenticate connection.'
-      });
-      toast.error('YouTube Connection Test Failed.');
+      toast.error(err.response?.data?.error || 'Failed to auto-save video playlist changes');
     } finally {
-      setTestingConnection(false);
+      setSaving(false);
     }
+  };
+
+  const handleAddVideo = () => {
+    if (!featuredVideoUrl.trim()) {
+      return toast.error('Please enter a YouTube video URL first.');
+    }
+    const id = extractVideoId(featuredVideoUrl);
+    if (!id) {
+      return toast.error('Invalid YouTube URL format.');
+    }
+    if (featuredVideos.some(v => v.videoId === id)) {
+      return toast.error('This video is already in the playlist.');
+    }
+
+    const newVideo = {
+      videoId: id,
+      url: featuredVideoUrl.trim(),
+      title: featuredVideoTitle.trim() || 'Featured Video',
+      addedAt: new Date().toISOString()
+    };
+
+    const updated = [...featuredVideos, newVideo];
+    setFeaturedVideos(updated);
+    setFeaturedVideoUrl('');
+    setFeaturedVideoTitle('');
+    setPreviewVideoId('');
+    saveFeaturedVideosList(updated);
+    toast.success('Video added and settings saved successfully!');
+  };
+
+  const handleRemoveVideo = (index) => {
+    const updated = featuredVideos.filter((_, idx) => idx !== index);
+    setFeaturedVideos(updated);
+    saveFeaturedVideosList(updated);
+    toast.success('Video removed and settings saved successfully!');
+  };
+
+  const handleMoveVideo = (index, direction) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= featuredVideos.length) return;
+    const updated = [...featuredVideos];
+    const temp = updated[index];
+    updated[index] = updated[nextIndex];
+    updated[nextIndex] = temp;
+    setFeaturedVideos(updated);
+    saveFeaturedVideosList(updated);
   };
 
   return (
@@ -202,84 +321,170 @@ const Settings = ({ settings, refreshSettings }) => {
             </div>
           </div>
 
-          {/* Section 2: YouTube Integration */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+          {/* Section 2: Featured Videos Playlist */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-6">
             <h2 className="text-base font-bold text-navy-800 border-b border-slate-100 pb-3 flex items-center">
               <Youtube size={18} className="text-red-600 mr-2" />
-              YouTube API Integration
+              🎬 Featured Video Playlist
             </h2>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  YouTube Channel ID
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. UCxxxxxxxxxxxxxx"
-                  value={youtubeChannelId}
-                  onChange={(e) => setYoutubeChannelId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-mono text-slate-800"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  YouTube API Key (Stored securely on backend)
-                </label>
-                <input
-                  type="password"
-                  placeholder="••••••••••••••••••••••••••••••••••••"
-                  value={youtubeApiKey}
-                  onChange={(e) => setYoutubeApiKey(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-mono text-slate-800"
-                />
-              </div>
-
-              {/* YouTube Testing block */}
-              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 rounded-xl p-4 border border-slate-200/60">
-                <div className="space-y-1">
-                  <p className="text-xs font-bold text-slate-700">Verify Credentials</p>
-                  <p className="text-[10px] text-slate-400 font-semibold leading-relaxed max-w-sm">
-                    Test connection queries YouTube APIs directly and reports the latest uploaded video.
-                  </p>
+            {/* Video Input Form */}
+            <div className="space-y-4 bg-slate-50/50 p-4 border border-slate-200/60 rounded-2xl">
+              <p className="text-xs font-bold text-slate-700">Add Video to Featured Playlist</p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    YouTube URL
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://youtube.com/watch?v=xxxx"
+                    value={featuredVideoUrl}
+                    onChange={(e) => setFeaturedVideoUrl(e.target.value)}
+                    className="w-full bg-white border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800"
+                  />
                 </div>
-                
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Video Title (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Zion Choir Live Worship 2026"
+                    value={featuredVideoTitle}
+                    onChange={(e) => setFeaturedVideoTitle(e.target.value)}
+                    className="w-full bg-white border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm text-slate-800 font-ethiopic"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-3 pt-2">
                 <button
                   type="button"
-                  onClick={handleTestYoutube}
-                  disabled={testingConnection}
-                  className="inline-flex items-center justify-center px-4 py-2 bg-navy-900 hover:bg-navy-950 text-white rounded-xl text-xs font-bold transition shadow-md disabled:opacity-50"
+                  onClick={handlePreviewVideo}
+                  className="inline-flex items-center justify-center px-4 py-2 bg-navy-800 hover:bg-navy-950 text-white rounded-xl text-xs font-bold transition shadow-md focus:outline-none"
                 >
-                  {testingConnection && <RefreshCw size={12} className="animate-spin mr-1.5" />}
-                  Test Connection
+                  Preview Video
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddVideo}
+                  className="inline-flex items-center justify-center px-4 py-2 bg-gold-500 hover:bg-gold-600 text-navy-955 rounded-xl text-xs font-bold transition shadow-md focus:outline-none"
+                >
+                  Add to List
                 </button>
               </div>
 
-              {/* Test Result Card */}
-              {testResult && (
-                <div className={`p-4 rounded-xl border text-xs leading-relaxed ${
-                  testResult.success 
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                    : 'bg-rose-50 border-rose-200 text-rose-800'
-                }`}>
-                  <div className="flex items-start space-x-2">
-                    {testResult.success ? (
-                      <CheckCircle size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <XCircle size={16} className="text-rose-600 flex-shrink-0 mt-0.5" />
-                    )}
-                    <div>
-                      <p className="font-bold">{testResult.success ? 'Success!' : 'Connection Failed'}</p>
-                      {testResult.success ? (
-                        <p className="mt-1 font-medium">
-                          Connected successfully. Latest Video Title: <span className="font-semibold underline">"{testResult.title}"</span>
-                        </p>
-                      ) : (
-                        <p className="mt-1 font-semibold">{testResult.error}</p>
-                      )}
+              {/* Preview Section */}
+              {previewVideoId && (
+                <div className="space-y-2 pt-4 border-t border-slate-200">
+                  <p className="text-xs font-bold text-slate-700 flex items-center">
+                    <span className="text-emerald-600 mr-1.5">✅</span> Preview:
+                  </p>
+                  <div className="relative rounded-xl overflow-hidden border border-slate-200 shadow-sm aspect-video bg-black group max-w-md">
+                    <img
+                      src={`https://img.youtube.com/vi/${previewVideoId}/hqdefault.jpg`}
+                      alt="YouTube Thumbnail Preview"
+                      className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                      <div className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                        <svg className="w-6 h-6 fill-current ml-0.5" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
                     </div>
+                    {featuredVideoTitle && (
+                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3">
+                        <p className="text-xs font-bold text-white line-clamp-1 font-ethiopic">{featuredVideoTitle}</p>
+                      </div>
+                    )}
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Configured Videos Playlist */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Playlist Order ({featuredVideos.length} videos)
+              </h3>
+              
+              {featuredVideos.length === 0 ? (
+                <div className="text-center py-8 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 text-slate-400 text-xs font-medium">
+                  <p>No featured videos configured.</p>
+                  <p className="mt-1 text-[10px] text-slate-400">Add a video using the form above to get started.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                  {featuredVideos.map((video, index) => (
+                    <div key={video.videoId} className="flex items-center justify-between p-4 hover:bg-slate-50/30 transition-colors group">
+                      
+                      {/* Left: Thumbnail & Title */}
+                      <div className="flex items-center space-x-4">
+                        <div className="relative w-20 aspect-video rounded-lg overflow-hidden border border-slate-200 flex-shrink-0 bg-black">
+                          <img 
+                            src={`https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`} 
+                            alt="Thumbnail" 
+                            className="w-full h-full object-cover"
+                          />
+                          {index === 0 && (
+                            <span className="absolute top-1 left-1 bg-gold-500 text-navy-950 px-1 py-0.5 rounded text-[8px] font-bold shadow-sm">
+                              Primary
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800 line-clamp-1 font-ethiopic">{video.title}</p>
+                          <p className="text-[10px] text-slate-400 font-mono line-clamp-1 truncate mt-0.5">{video.url}</p>
+                        </div>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div className="flex items-center space-x-3">
+                        {/* Ordering Actions */}
+                        <div className="flex items-center space-x-1">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => handleMoveVideo(index, -1)}
+                            className="p-1 text-slate-400 hover:text-navy-800 disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
+                            title="Move Up"
+                          >
+                            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5H7z"/></svg>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === featuredVideos.length - 1}
+                            onClick={() => handleMoveVideo(index, 1)}
+                            className="p-1 text-slate-400 hover:text-navy-800 disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
+                            title="Move Down"
+                          >
+                            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
+                          </button>
+                        </div>
+
+                        {/* Delete Action */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVideo(index)}
+                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
+                          title="Remove video from featured list"
+                        >
+                          <svg className="w-4 h-4 stroke-current fill-none" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                          </svg>
+                        </button>
+                      </div>
+
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

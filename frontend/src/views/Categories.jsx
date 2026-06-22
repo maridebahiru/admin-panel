@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   FolderKanban, 
@@ -55,19 +55,6 @@ const Categories = () => {
     }
   };
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  // Watch for ?new=true query parameters
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get('new') === 'true') {
-      openCreateModal();
-      navigate('/categories', { replace: true });
-    }
-  }, [location.search]);
-
   const openCreateModal = () => {
     setIsEditing(false);
     setCurrentId(null);
@@ -91,6 +78,19 @@ const Categories = () => {
     setExistingIcon(cat.icon_url);
     setShowFormModal(true);
   };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // Watch for ?new=true query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('new') === 'true') {
+      openCreateModal();
+      navigate('/categories', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const handleIconChange = (e) => {
     const file = e.target.files[0];

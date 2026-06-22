@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
+import { createContext, useState, useEffect, useContext, useRef } from 'react';
 import api from '../utils/api';
 
 const AuthContext = createContext(null);
@@ -9,6 +9,25 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const logoutTimerRef = useRef(null);
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('token_expiry');
+    
+    if (logoutTimerRef.current) {
+      clearTimeout(logoutTimerRef.current);
+      logoutTimerRef.current = null;
+    }
+
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
+    
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  };
 
   // Validate session on mount
   useEffect(() => {
@@ -73,25 +92,6 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       const errMsg = err.response?.data?.error || 'Authentication failed';
       return { success: false, error: errMsg };
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('token_expiry');
-    
-    if (logoutTimerRef.current) {
-      clearTimeout(logoutTimerRef.current);
-      logoutTimerRef.current = null;
-    }
-
-    setToken(null);
-    setUser(null);
-    setIsAuthenticated(false);
-    
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
     }
   };
 

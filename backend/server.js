@@ -94,6 +94,22 @@ let youtubeCache = {
 };
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in ms
 
+// Extract video ID from different YouTube URL formats
+const extractVideoId = (url) => {
+  if (!url) return null;
+  const patterns = [
+    /youtube\.com\/watch\?v=([^&]+)/,
+    /youtu\.be\/([^?]+)/,
+    /youtube\.com\/live\/([^?]+)/,
+    /youtube\.com\/shorts\/([^?]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
+
 // Helper to query YouTube Data API v3
 const fetchLatestYoutubeVideo = async (channelId, apiKey) => {
   if (!channelId || !apiKey) {
@@ -248,6 +264,9 @@ app.put('/settings', requireAuth, async (req, res) => {
     choir_name,
     youtube_channel_id,
     youtube_api_key,
+    featured_video_url,
+    featured_video_title,
+    featured_videos,
     facebook_url,
     telegram_url,
     youtube_url,
@@ -256,11 +275,15 @@ app.put('/settings', requireAuth, async (req, res) => {
   } = req.body;
 
   try {
-    // Clear youtube cache if channel or key changed
+    // Clear youtube cache if channel, key, URL, title or list changed
     const { data: current } = await supabase.from('settings').select('*').eq('id', 1).single();
     if (
       current &&
-      (current.youtube_channel_id !== youtube_channel_id || current.youtube_api_key !== youtube_api_key)
+      (current.youtube_channel_id !== youtube_channel_id || 
+       current.youtube_api_key !== youtube_api_key ||
+       current.featured_video_url !== featured_video_url ||
+       current.featured_video_title !== featured_video_title ||
+       current.featured_videos !== featured_videos)
     ) {
       youtubeCache = { data: null, timestamp: 0 };
     }
@@ -272,6 +295,9 @@ app.put('/settings', requireAuth, async (req, res) => {
         choir_name,
         youtube_channel_id,
         youtube_api_key,
+        featured_video_url,
+        featured_video_title,
+        featured_videos,
         facebook_url,
         telegram_url,
         youtube_url,
@@ -325,7 +351,7 @@ app.get('/youtube/latest', async (req, res) => {
     // 1. Fetch settings from DB
     const { data: settings, error: settingsError } = await supabase
       .from('settings')
-      .select('logo_url, welcome_text, youtube_channel_id, youtube_api_key')
+      .select('logo_url, welcome_text, youtube_channel_id, youtube_api_key, featured_video_url, featured_video_title, featured_videos, updated_at')
       .eq('id', 1)
       .single();
 
@@ -333,46 +359,92 @@ app.get('/youtube/latest', async (req, res) => {
       return res.json({ fallback: true, message: 'Settings not configured' });
     }
 
-    const { logo_url, welcome_text, youtube_channel_id, youtube_api_key } = settings;
+    const { 
+      logo_url, 
+      welcome_text, 
+      youtube_channel_id, 
+      youtube_api_key, 
+      featured_video_url, 
+      featured_video_title,
+      featured_videos,
+      updated_at
+    } = settings;
 
-    // Fallback conditions: Missing keys or channel ID
-    if (!youtube_channel_id || !youtube_api_key) {
+    // 2. Parse featured videos list if configured
+    let videosList = [];
+    if (featured_videos) {
+      try {
+        videosList = typeof featured_videos === 'string' ? JSON.parse(featured_videos) : featured_videos;
+      } catch (e) {
+        console.warn('Error parsing featured_videos JSON:', e);
+      }
+    }
+
+    // 3. Return multiple featured videos if configured
+    if (Array.isArray(videosList) && videosList.length > 0) {
       return res.json({
-        fallback: true,
-        logoUrl: logo_url,
-        welcomeText: welcome_text
+        videoId: videosList[0].videoId,
+        title: videosList[0].title || 'Featured Video',
+        publishedAt: videosList[0].addedAt || updated_at || new Date().toISOString(),
+        viewCount: 0,
+        fallback: false,
+        videos: videosList
       });
     }
 
-    // Check Cache
-    const now = Date.now();
-    if (youtubeCache.data && now - youtubeCache.timestamp < CACHE_DURATION) {
-      return res.json(youtubeCache.data);
+    // 4. Backward compatibility: Check if admin configured a single featured video URL directly
+    if (featured_video_url) {
+      const videoId = extractVideoId(featured_video_url);
+      if (videoId) {
+        const singleVideo = {
+          videoId,
+          title: featured_video_title || 'Featured Video',
+          url: featured_video_url,
+          addedAt: updated_at || new Date().toISOString()
+        };
+        return res.json({
+          videoId,
+          title: featured_video_title || 'Featured Video',
+          publishedAt: updated_at || new Date().toISOString(),
+          viewCount: 0,
+          fallback: false,
+          videos: [singleVideo]
+        });
+      }
     }
 
-    // Try fetching from YouTube Data API
-    try {
-      const videoData = await fetchLatestYoutubeVideo(youtube_channel_id, youtube_api_key);
-      youtubeCache = {
-        data: videoData,
-        timestamp: now
-      };
-      return res.json(videoData);
-    } catch (apiErr) {
-      console.warn('YouTube API call failed, degrading silently to fallback:', apiErr.message);
-      
-      // If we have previous cache data, we can serve it instead of failing
-      if (youtubeCache.data) {
+    // 5. Backward compatibility: Fallback to old API logic if channel and key exist
+    if (youtube_channel_id && youtube_api_key) {
+      // Check Cache
+      const now = Date.now();
+      if (youtubeCache.data && now - youtubeCache.timestamp < CACHE_DURATION) {
         return res.json(youtubeCache.data);
       }
 
-      // Silent fallback representation
-      return res.json({
-        fallback: true,
-        logoUrl: logo_url,
-        welcomeText: welcome_text
-      });
+      // Try fetching from YouTube Data API
+      try {
+        const videoData = await fetchLatestYoutubeVideo(youtube_channel_id, youtube_api_key);
+        youtubeCache = {
+          data: videoData,
+          timestamp: now
+        };
+        return res.json(videoData);
+      } catch (apiErr) {
+        console.warn('YouTube API call failed, degrading silently to fallback:', apiErr.message);
+        
+        // If we have previous cache data, we can serve it instead of failing
+        if (youtubeCache.data) {
+          return res.json(youtubeCache.data);
+        }
+      }
     }
+
+    // 6. Default Fallback banner
+    return res.json({
+      fallback: true,
+      logoUrl: logo_url,
+      welcomeText: welcome_text
+    });
   } catch (err) {
     console.error('Youtube Fetch Endpoint Error:', err);
     return res.json({ fallback: true, message: 'Internal server error querying youtube' });

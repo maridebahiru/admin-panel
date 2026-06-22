@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Megaphone, 
@@ -13,8 +13,8 @@ import {
   Upload,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
@@ -58,20 +58,6 @@ const Announcements = () => {
     }
   };
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
-
-  // Watch for ?new=true query parameter
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get('new') === 'true') {
-      openCreateModal();
-      // Clear query param so it doesn't reopen on refresh
-      navigate('/announcements', { replace: true });
-    }
-  }, [location.search]);
-
   const openCreateModal = () => {
     setIsEditing(false);
     setCurrentId(null);
@@ -97,6 +83,20 @@ const Announcements = () => {
     setStatus(ann.status);
     setShowFormModal(true);
   };
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
+
+  // Watch for ?new=true query parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('new') === 'true') {
+      openCreateModal();
+      // Clear query param so it doesn't reopen on refresh
+      navigate('/announcements', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
