@@ -49,6 +49,7 @@ CREATE TABLE settings (
     logo_url TEXT,
     welcome_text TEXT DEFAULT 'Welcome to Hyme Managmenr',
     choir_name TEXT DEFAULT 'Hyme Managmenr',
+    about_us TEXT,
     youtube_channel_id TEXT,
     youtube_api_key TEXT,
     featured_video_url TEXT,

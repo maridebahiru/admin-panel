@@ -262,6 +262,7 @@ app.put('/settings', requireAuth, async (req, res) => {
   const {
     welcome_text,
     choir_name,
+    about_us,
     youtube_channel_id,
     youtube_api_key,
     featured_video_url,
@@ -293,6 +294,7 @@ app.put('/settings', requireAuth, async (req, res) => {
       .update({
         welcome_text,
         choir_name,
+        about_us,
         youtube_channel_id,
         youtube_api_key,
         featured_video_url,
