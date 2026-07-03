@@ -39,6 +39,7 @@ const Settings = ({ settings, refreshSettings }) => {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
   const [tiktokUrl, setTiktokUrl] = useState('');
+  const [aboutUs, setAboutUs] = useState('');
 
   // Logo upload
   const [logoFile, setLogoFile] = useState(null);
@@ -54,6 +55,7 @@ const Settings = ({ settings, refreshSettings }) => {
     if (settings) {
       setWelcomeText(settings.welcome_text || '');
       setChoirName(settings.choir_name || '');
+      setAboutUs(settings.about_us || '');
       setFeaturedVideoUrl('');
       setFeaturedVideoTitle('');
       setFacebookUrl(settings.facebook_url || '');
@@ -150,6 +152,7 @@ const Settings = ({ settings, refreshSettings }) => {
     const payload = {
       welcome_text: welcomeText,
       choir_name: choirName,
+      about_us: aboutUs,
       // Preserve old settings if present
       youtube_channel_id: settings?.youtube_channel_id || '',
       youtube_api_key: settings?.youtube_api_key || '',
@@ -195,6 +198,7 @@ const Settings = ({ settings, refreshSettings }) => {
     const payload = {
       welcome_text: welcomeText,
       choir_name: choirName,
+      about_us: aboutUs,
       youtube_channel_id: settings?.youtube_channel_id || '',
       youtube_api_key: settings?.youtube_api_key || '',
       featured_video_url: updatedList[0]?.url || '',
@@ -318,6 +322,19 @@ const Settings = ({ settings, refreshSettings }) => {
                   className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 font-ethiopic"
                 />
               </div>
+            </div>
+
+            <div className="pt-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                About Us / Description
+              </label>
+              <textarea
+                rows={4}
+                placeholder="Brief description of the choir/church, mission, or history..."
+                value={aboutUs}
+                onChange={(e) => setAboutUs(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 font-ethiopic resize-y"
+              />
             </div>
           </div>
 

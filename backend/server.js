@@ -5,6 +5,7 @@ import multer from 'multer';
 import axios from 'axios';
 import { supabase } from './supabaseClient.js';
 import { requireAuth } from './middleware/auth.js';
+import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
@@ -32,6 +33,23 @@ const upload = multer({
   }
 });
 
+// Configure Multer for in-memory audio file storage (max 50MB)
+const audioUpload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const isAudioMime = file.mimetype.startsWith('audio/');
+    const isAudioExt = /\.(mp3|wav|m4a|ogg|aac|flac)$/i.test(file.originalname);
+    if (isAudioMime || isAudioExt) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only audio files are allowed!'), false);
+    }
+  }
+});
+
 // Helper: Ensure Supabase Storage bucket exists
 const ensureBucketExists = async () => {
   try {
@@ -43,17 +61,30 @@ const ensureBucketExists = async () => {
 
     const bucketName = 'mezmure-assets';
     const exists = buckets.some(b => b.name === bucketName);
+
     if (!exists) {
       console.log(`Creating public Supabase bucket "${bucketName}"...`);
       const { error: createError } = await supabase.storage.createBucket(bucketName, {
         public: true,
-        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'],
-        fileSizeLimit: 2097152 // 2MB
+        allowedMimeTypes: null, // Allow all MIME types to prevent RLS/MIME type violation errors
+        fileSizeLimit: 52428800 // 50MB
       });
       if (createError) {
         console.error(`Error creating bucket "${bucketName}":`, createError.message);
       } else {
         console.log(`Successfully created public bucket "${bucketName}".`);
+      }
+    } else {
+      console.log(`Updating configuration for Supabase bucket "${bucketName}"...`);
+      const { error: updateError } = await supabase.storage.updateBucket(bucketName, {
+        public: true,
+        allowedMimeTypes: null, // Allow all MIME types to prevent RLS/MIME type violation errors
+        fileSizeLimit: 52428800 // 50MB
+      });
+      if (updateError) {
+        console.warn(`Error updating bucket "${bucketName}" settings:`, updateError.message);
+      } else {
+        console.log(`Successfully updated public bucket "${bucketName}" configurations.`);
       }
     }
   } catch (err) {
@@ -67,6 +98,8 @@ const uploadToSupabase = async (file, folder) => {
   const cleanName = file.originalname.replace(/[^a-zA-Z0-9]/g, '_');
   const fileName = `${folder}/${Date.now()}-${cleanName}.${fileExtension}`;
   
+  console.log(`Attempting Supabase upload: File name=${file.originalname}, MIME=${file.mimetype}, Size=${file.size} bytes, Destination=${fileName}`);
+
   const { data, error } = await supabase.storage
     .from('mezmure-assets')
     .upload(fileName, file.buffer, {
@@ -75,6 +108,7 @@ const uploadToSupabase = async (file, folder) => {
     });
 
   if (error) {
+    console.error('Supabase Storage upload error details:', error);
     throw new Error(`Supabase Storage upload failed: ${error.message}`);
   }
 
@@ -173,7 +207,17 @@ app.post('/auth/login', async (req, res) => {
   }
 
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const authClient = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+    const { data, error } = await authClient.auth.signInWithPassword({
       email,
       password
     });
@@ -750,7 +794,7 @@ app.get('/mezmurs', async (req, res) => {
 });
 
 // POST /mezmurs (Protected)
-app.post('/mezmurs', requireAuth, async (req, res) => {
+app.post('/mezmurs', requireAuth, audioUpload.single('audio'), async (req, res) => {
   const {
     title,
     category_id,
@@ -766,6 +810,11 @@ app.post('/mezmurs', requireAuth, async (req, res) => {
   }
 
   try {
+    let audioUrl = null;
+    if (req.file) {
+      audioUrl = await uploadToSupabase(req.file, 'audio');
+    }
+
     const { data, error } = await supabase
       .from('mezmurs')
       .insert({
@@ -776,6 +825,7 @@ app.post('/mezmurs', requireAuth, async (req, res) => {
         author,
         tune,
         lyrics,
+        audio_url: audioUrl,
         last_edited_date: new Date().toISOString()
       })
       .select()
@@ -790,7 +840,7 @@ app.post('/mezmurs', requireAuth, async (req, res) => {
 });
 
 // PUT /mezmurs/:id (Protected)
-app.put('/mezmurs/:id', requireAuth, async (req, res) => {
+app.put('/mezmurs/:id', requireAuth, audioUpload.single('audio'), async (req, res) => {
   const { id } = req.params;
   const {
     title,
@@ -799,7 +849,8 @@ app.put('/mezmurs/:id', requireAuth, async (req, res) => {
     mezmur_number,
     author,
     tune,
-    lyrics
+    lyrics,
+    audio_url
   } = req.body;
 
   if (!title || !category_id || !language || !lyrics) {
@@ -807,6 +858,15 @@ app.put('/mezmurs/:id', requireAuth, async (req, res) => {
   }
 
   try {
+    let finalAudioUrl = null;
+    if (audio_url && audio_url !== 'null' && audio_url !== 'undefined') {
+      finalAudioUrl = audio_url;
+    }
+
+    if (req.file) {
+      finalAudioUrl = await uploadToSupabase(req.file, 'audio');
+    }
+
     const { data, error } = await supabase
       .from('mezmurs')
       .update({
@@ -817,6 +877,7 @@ app.put('/mezmurs/:id', requireAuth, async (req, res) => {
         author,
         tune,
         lyrics,
+        audio_url: finalAudioUrl,
         last_edited_date: new Date().toISOString()
       })
       .eq('id', id)

@@ -45,6 +45,9 @@ const Mezmurs = () => {
   const [author, setAuthor] = useState('');
   const [tune, setTune] = useState('');
   const [lyrics, setLyrics] = useState('');
+  const [audioFile, setAudioFile] = useState(null);
+  const [currentAudioUrl, setCurrentAudioUrl] = useState('');
+  const [deleteExistingAudio, setDeleteExistingAudio] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Pagination
@@ -79,6 +82,9 @@ const Mezmurs = () => {
     setAuthor('');
     setTune('');
     setLyrics('');
+    setAudioFile(null);
+    setCurrentAudioUrl('');
+    setDeleteExistingAudio(false);
     setShowForm(true);
   };
 
@@ -92,11 +98,17 @@ const Mezmurs = () => {
     setAuthor(mez.author || '');
     setTune(mez.tune || '');
     setLyrics(mez.lyrics);
+    setAudioFile(null);
+    setCurrentAudioUrl(mez.audio_url || '');
+    setDeleteExistingAudio(false);
     setShowForm(true);
   };
 
   const closeFormView = () => {
     setShowForm(false);
+    setAudioFile(null);
+    setCurrentAudioUrl('');
+    setDeleteExistingAudio(false);
   };
 
   useEffect(() => {
@@ -118,23 +130,34 @@ const Mezmurs = () => {
       return toast.error('Please fill in all required fields.');
     }
 
-    const payload = {
-      title,
-      category_id: categoryId,
-      language,
-      mezmur_number: mezmurNumber,
-      author,
-      tune,
-      lyrics
-    };
+    const formData = new FormData();
+    formData.append('title', title.trim());
+    formData.append('category_id', categoryId);
+    formData.append('language', language);
+    formData.append('mezmur_number', mezmurNumber);
+    formData.append('author', author);
+    formData.append('tune', tune);
+    formData.append('lyrics', lyrics.trim());
+
+    if (audioFile) {
+      formData.append('audio', audioFile);
+    } else if (isEditing) {
+      formData.append('audio_url', deleteExistingAudio ? 'null' : (currentAudioUrl || ''));
+    }
 
     try {
       setSaving(true);
+      const config = {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      };
+
       if (isEditing) {
-        await api.put(`/mezmurs/${currentId}`, payload);
+        await api.put(`/mezmurs/${currentId}`, formData, config);
         toast.success('Hymn updated successfully!');
       } else {
-        await api.post('/mezmurs', payload);
+        await api.post('/mezmurs', formData, config);
         toast.success('Hymn created successfully!');
       }
       setShowForm(false);
@@ -256,61 +279,81 @@ const Mezmurs = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Language Tag
-                  </label>
-                  <select
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700"
-                  >
-                    <option value="Amharic">Amharic</option>
-                    <option value="English">English</option>
-                    <option value="Both">Both Languages</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Hymn Number
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 104"
-                    value={mezmurNumber}
-                    onChange={(e) => setMezmurNumber(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Author / Writer
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Saint Yared"
-                    value={author}
-                    onChange={(e) => setAuthor(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 font-ethiopic"
-                  />
-                </div>
-              </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Tune / Melody Name
+                  Audio Track (Optional)
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Ge'ez rhythm"
-                  value={tune}
-                  onChange={(e) => setTune(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 font-ethiopic"
-                />
+                
+                {currentAudioUrl && !deleteExistingAudio ? (
+                  <div className="flex items-center justify-between p-3 bg-navy-50/50 border border-navy-100 rounded-xl">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="p-2 bg-navy-100 text-navy-800 rounded-lg shrink-0">
+                        <Music size={18} />
+                      </div>
+                      <div className="truncate">
+                        <p className="text-xs font-bold text-slate-700 truncate">Current Audio File</p>
+                        <a 
+                          href={currentAudioUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-xs text-navy-600 hover:text-navy-800 hover:underline truncate block font-medium"
+                        >
+                          {currentAudioUrl.split('/').pop()}
+                        </a>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteExistingAudio(true)}
+                      className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative border-2 border-dashed border-slate-200 hover:border-navy-500 rounded-xl p-4 bg-slate-50/50 transition-colors flex flex-col items-center justify-center text-center cursor-pointer">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          setAudioFile(e.target.files[0]);
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    {audioFile ? (
+                      <div className="flex flex-col items-center">
+                        <div className="p-2 bg-emerald-100 text-emerald-800 rounded-full mb-1">
+                          <Music size={18} />
+                        </div>
+                        <span className="text-xs font-bold text-slate-700 max-w-[250px] truncate">{audioFile.name}</span>
+                        <span className="text-[10px] text-slate-400">{(audioFile.size / (1024 * 1024)).toFixed(2)} MB</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAudioFile(null);
+                          }}
+                          className="mt-1.5 text-[10px] font-bold text-red-500 hover:text-red-700 focus:outline-none"
+                        >
+                          Clear Selection
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <div className="p-1.5 bg-slate-200/60 text-slate-500 rounded-full mb-1">
+                          <Plus size={16} />
+                        </div>
+                        <span className="text-xs font-bold text-slate-600">Select Audio File</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Click or drag audio track here (Max 50MB)</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
@@ -404,6 +447,33 @@ const Mezmurs = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* Audio Player Mockup */}
+                  {(audioFile || (currentAudioUrl && !deleteExistingAudio)) && (
+                    <div className="bg-navy-900 border border-navy-800 rounded-2xl p-2.5 flex items-center space-x-2.5 shadow-md">
+                      <button 
+                        type="button" 
+                        className="w-7 h-7 rounded-full bg-gold-500 flex items-center justify-center text-navy-950 shrink-0 shadow"
+                      >
+                        <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[9px] font-bold text-slate-200 truncate">
+                          {audioFile ? audioFile.name : currentAudioUrl.split('/').pop()}
+                        </p>
+                        {/* Fake Progress Bar */}
+                        <div className="mt-1 flex items-center space-x-1">
+                          <span className="text-[7px] text-slate-400">0:00</span>
+                          <div className="flex-1 h-0.5 bg-navy-800 rounded-full overflow-hidden">
+                            <div className="w-1/4 h-full bg-gold-500 rounded-full animate-pulse" />
+                          </div>
+                          <span className="text-[7px] text-slate-400">3:12</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Lyrics Body */}
                   <div className="text-center font-ethiopic text-sm text-slate-200 leading-relaxed py-2 whitespace-pre-wrap font-medium">
@@ -504,7 +574,18 @@ const Mezmurs = () => {
                       <tr key={mez.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex flex-col">
-                            <span className="font-bold text-slate-800 text-base font-ethiopic">{mez.title}</span>
+                            <div className="flex items-center space-x-2 flex-wrap">
+                              <span className="font-bold text-slate-800 text-base font-ethiopic">{mez.title}</span>
+                              {mez.audio_url && (
+                                <span 
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-navy-50 text-navy-800 border border-navy-100/60"
+                                  title="Includes audio track"
+                                >
+                                  <Music size={9} className="mr-0.5" />
+                                  Audio
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[10px] text-slate-400 font-semibold">
                               {mez.mezmur_number ? `Hymn № ${mez.mezmur_number}` : ''} 
                               {mez.author ? ` • By ${mez.author}` : ''}

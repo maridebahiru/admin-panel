@@ -28,6 +28,7 @@ CREATE TABLE mezmurs (
     author TEXT,
     tune TEXT,
     lyrics TEXT NOT NULL,
+    audio_url TEXT,
     last_edited_date TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL
 );
@@ -67,3 +68,7 @@ CREATE TABLE settings (
 INSERT INTO settings (id, welcome_text, choir_name)
 VALUES (1, 'Welcome to Hyme Managmenr', 'Hyme Managmenr')
 ON CONFLICT (id) DO NOTHING;
+
+-- Migration to add audio_url to mezmurs table
+ALTER TABLE mezmurs ADD COLUMN IF NOT EXISTS audio_url TEXT;
+
